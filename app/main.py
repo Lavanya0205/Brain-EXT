@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from core.memory.semantic_memory import add_memory, search_memory
 from core.embeddings.text_embedder import embed_text
 from core.router.router import route_query
-
-
+from core.classifier.predictor import classify_text
+from core.router.hybrid_router import hybrid_route
 
 app = FastAPI(title="Super Memory ML Service")
 
@@ -24,6 +24,12 @@ class MemorySearchRequest(BaseModel):
     top_k: int = 3
 
 class RouteRequest(BaseModel):
+    query: str
+
+class ClassifyRequest(BaseModel):
+    query: str
+
+class HybridRouteRequest(BaseModel):
     query: str
 
 
@@ -59,3 +65,11 @@ def search_memory_api(request: MemorySearchRequest):
 @app.post("/route")
 def route_api(request: RouteRequest):
     return route_query(request.query)
+
+@app.post("/classify")
+def classify_query(request: ClassifyRequest):
+    return classify_text(request.query)
+
+@app.post("/hybrid/route")
+def route(request: RouteRequest):
+    return hybrid_route(request.query)
