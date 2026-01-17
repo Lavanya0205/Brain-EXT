@@ -26,59 +26,59 @@ def cosine_similarity(a, b):
 
 
 def compute_confidence(sim_scores: dict) -> float:
-    """Normalize similarity scores into a confidence"""
     values = np.array(list(sim_scores.values()))
     exp_vals = np.exp(values - np.max(values))
     probs = exp_vals / exp_vals.sum()
     return float(np.max(probs))
 
-
 def hybrid_route(query: str):
-    #  Classifier prediction
+    # Classifier prediction
     clf_result = classify_text(query)
     clf_lobe = clf_result["predicted_lobe"]
     clf_conf = float(clf_result["confidence"])
 
-    #  Embedding similarity
+    # Embedding similarity
     query_emb = embed_text(query)
-
     sim_scores = {
         lobe: cosine_similarity(query_emb, emb)
         for lobe, emb in LOBE_EMBEDDINGS.items()
     }
 
-    best_sim_lobe = max(sim_scores, key=sim_scores.get)
+    # Sort similarity scores
+    sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
+    best_sim_lobe, best_sim_score = sorted_lobes[0]
+    second_sim_score = sorted_lobes[1][1]
+    margin = best_sim_score - second_sim_score
 
-    #  Decide final lobe
+    # Decide final lobe (classifier-first)
     final_lobe = clf_lobe
-    if clf_conf < 0.6 and sim_scores[best_sim_lobe] > sim_scores[clf_lobe] + 0.15:
+
+    if clf_conf < 0.55 and best_sim_lobe != clf_lobe and margin > 0.18:
         final_lobe = best_sim_lobe
 
-    # Compute confidence correctly
-    # Confidence calibration 
-    if clf_conf >= 0.7:
-        final_confidence = clf_conf
-    else:
-        final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
-        final_confidence = min(0.95, max(0.3, final_confidence))
-        sorted_scores = sorted(sim_scores.values(), reverse=True)
-        margin = sorted_scores[0] - sorted_scores[1]
-        if margin > 0.08:
-            final_confidence += 0.1
-        elif margin > 0.12:
-            final_confidence += 0.2
+    # Confidence computation (CORRECT)
+    final_confidence = (0.6 * clf_conf) + (0.4 * sim_scores[final_lobe])
 
-    final_confidence = min(final_confidence, 0.95)
+    # Margin-based confidence boost (FIXED ORDER)
+    if margin > 0.20:
+        final_confidence += 0.20
+    elif margin > 0.12:
+        final_confidence += 0.12
+    elif margin > 0.08:
+        final_confidence += 0.05
+
+    # Clamp + normalize ONCE
+    final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
 
-    # Return response
     return {
-    "query": query,
-    "selected_lobe": final_lobe,
-    "confidence": final_confidence,
-    "classifier_confidence": round(float(clf_conf), 3),
-    "embedding_scores": {
-        k: round(float(v), 3) for k, v in sim_scores.items()
+        "query": query,
+        "selected_lobe": final_lobe,
+        "confidence": round(final_confidence, 3),
+        "classifier_confidence": round(clf_conf, 3),
+        "embedding_scores": {
+            k: round(float(v), 3) for k, v in sim_scores.items()
+        }
     }
-}
+
 
