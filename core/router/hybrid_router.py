@@ -9,6 +9,15 @@ LOBE_EMBEDDINGS = {
     for lobe, text in LOBE_TEXT.items()
 }
 
+def normalize_confidence(conf: float) -> float:
+    """
+    Maps raw confidence (≈0.3-0.7) to human-readable scale (0-1)
+    """
+    if conf <= 0.3:
+        return 0.3
+    if conf >= 0.85:
+        return 0.95
+    return round((conf - 0.3) / (0.85 - 0.3), 3)
 
 def cosine_similarity(a, b):
     a = np.array(a)
@@ -52,16 +61,24 @@ def hybrid_route(query: str):
     else:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
         final_confidence = min(0.95, max(0.3, final_confidence))
+        sorted_scores = sorted(sim_scores.values(), reverse=True)
+        margin = sorted_scores[0] - sorted_scores[1]
+        if margin > 0.08:
+            final_confidence += 0.1
+        elif margin > 0.12:
+            final_confidence += 0.2
 
+    final_confidence = min(final_confidence, 0.95)
+    final_confidence = normalize_confidence(final_confidence)
 
     # Return response
     return {
-        "query": query,
-        "selected_lobe": final_lobe,
-        "confidence": round(final_confidence, 3),
-        "classifier_confidence": round(clf_conf, 3),
-        "embedding_scores": {
-            k: round(float(v), 3) for k, v in sim_scores.items()
-        }
+    "query": query,
+    "selected_lobe": final_lobe,
+    "confidence": final_confidence,
+    "classifier_confidence": round(float(clf_conf), 3),
+    "embedding_scores": {
+        k: round(float(v), 3) for k, v in sim_scores.items()
     }
+}
 
