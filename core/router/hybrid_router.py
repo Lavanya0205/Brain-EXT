@@ -2,8 +2,9 @@ import numpy as np
 from core.embeddings.text_embedder import embed_text
 from core.classifier.predictor import classify_text
 from core.config.lobes import LOBE_TEXT
+from core.router.action_router import decide_action
 
-# Precompute lobe embeddings (runs once at import)
+# Precompute lobe embeddings
 LOBE_EMBEDDINGS = {
     lobe: embed_text(text)
     for lobe, text in LOBE_TEXT.items()
@@ -23,7 +24,6 @@ def cosine_similarity(a, b):
     a = np.array(a)
     b = np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
-
 
 def compute_confidence(sim_scores: dict) -> float:
     values = np.array(list(sim_scores.values()))
@@ -52,14 +52,13 @@ def hybrid_route(query: str):
 
     # Decide final lobe (classifier-first)
     final_lobe = clf_lobe
-
     if clf_conf < 0.55 and best_sim_lobe != clf_lobe and margin > 0.18:
         final_lobe = best_sim_lobe
 
-    # Confidence computation (CORRECT)
+    # Confidence computation 
     final_confidence = (0.6 * clf_conf) + (0.4 * sim_scores[final_lobe])
 
-    # Margin-based confidence boost (FIXED ORDER)
+    # Margin-based confidence boost 
     if margin > 0.20:
         final_confidence += 0.20
     elif margin > 0.12:

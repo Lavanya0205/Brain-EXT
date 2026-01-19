@@ -1,22 +1,19 @@
-from core.router.lobe_actions_map import LOBE_ACTION_MAP
-from core.router.actions import BrainAction
+from core.config.actions import BrainAction
 
-def route_action(lobe: str, confidence: float):
-    """
-    Decide what the system should DO next based on lobe + confidence
-    """
-
-    # Low confidence
+def decide_action(lobe: str, confidence: float) -> BrainAction:
     if confidence < 0.45:
-        return {
-            "action": BrainAction.ASK_CLARIFICATION,
-            "reason": "Low confidence in lobe classification"
-        }
+        return BrainAction.ASK_CLARIFICATION
 
-    # Normal confidence 
-    actions = LOBE_ACTION_MAP.get(lobe, [])
+    if lobe == "frontal":
+        return BrainAction.PLAN
 
-    return {
-        "action": actions[0],
-        "alternatives": actions[1:]
-    }
+    if lobe == "temporal":
+        return BrainAction.EXPLAIN
+
+    if lobe == "parietal":
+        return BrainAction.RECALL
+
+    if lobe == "occipital":
+        return BrainAction.VISUALIZE
+
+    return BrainAction.ASK_CLARIFICATION
