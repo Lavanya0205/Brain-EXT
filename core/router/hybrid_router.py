@@ -37,8 +37,13 @@ def hybrid_route(query: str):
     clf_lobe = clf_result["predicted_lobe"]
     clf_conf = float(clf_result["confidence"])
 
-    # Embedding similarity
+    # Initialize defaults 
+    final_lobe = clf_lobe
+    final_confidence = clf_conf
+
+    # 3. Embedding similarity
     query_emb = embed_text(query)
+
     sim_scores = {
         lobe: cosine_similarity(query_emb, emb)
         for lobe, emb in LOBE_EMBEDDINGS.items()
@@ -50,34 +55,28 @@ def hybrid_route(query: str):
     second_sim_score = sorted_lobes[1][1]
     margin = best_sim_score - second_sim_score
 
-    # Decide final lobe (classifier-first)
-    final_lobe = clf_lobe
-    if clf_conf < 0.55 and best_sim_lobe != clf_lobe and margin > 0.18:
+    # Final lobe decision
+    if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
 
-    # Confidence computation 
-    final_confidence = (0.6 * clf_conf) + (0.4 * sim_scores[final_lobe])
+    # Final confidence
+    if clf_conf < 0.7:
+        final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
 
-    # Margin-based confidence boost 
-    if margin > 0.20:
-        final_confidence += 0.20
-    elif margin > 0.12:
-        final_confidence += 0.12
-    elif margin > 0.08:
-        final_confidence += 0.05
-
-    # Clamp + normalize ONCE
     final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
 
+    # Decide action
+    action = decide_action(final_lobe, final_confidence)
+
+    # Return
     return {
         "query": query,
         "selected_lobe": final_lobe,
         "confidence": round(final_confidence, 3),
+        "action": action,
         "classifier_confidence": round(clf_conf, 3),
         "embedding_scores": {
             k: round(float(v), 3) for k, v in sim_scores.items()
         }
     }
-
-
