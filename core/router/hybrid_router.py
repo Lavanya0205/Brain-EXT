@@ -3,6 +3,7 @@ from core.embeddings.text_embedder import embed_text
 from core.classifier.predictor import classify_text
 from core.config.lobes import LOBE_TEXT
 from core.router.action_router import decide_action
+from core.memory.memory_manager import update_memory
 
 # Precompute lobe embeddings
 LOBE_EMBEDDINGS = {
@@ -37,6 +38,12 @@ def hybrid_route(query: str):
     clf_lobe = clf_result["predicted_lobe"]
     clf_conf = float(clf_result["confidence"])
 
+    update_memory(
+    query=query,
+    lobe=final_lobe,
+    action=action,
+    confidence=final_confidence
+)
     # Initialize defaults 
     final_lobe = clf_lobe
     final_confidence = clf_conf
