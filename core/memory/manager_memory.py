@@ -17,8 +17,5 @@ def update_memory(query, lobe, action, confidence):
     if confidence < 0.5:
         long_memory.increment_confusion()
 
-def get_memory_context():
-    return {
-        "recent": short_memory.get(),
-        "long_term": long_memory.data
-    }
+    print("SHORT TERM MEMORY:", short_memory.get())
+    print("LONG TERM MEMORY:", long_memory.data)

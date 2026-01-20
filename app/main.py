@@ -5,6 +5,7 @@ from core.embeddings.text_embedder import embed_text
 from core.router.router import route_query
 from core.classifier.predictor import classify_text
 from core.router.hybrid_router import hybrid_route
+from core.memory.manager_memory import get_memory_context
 
 app = FastAPI(title="Super Memory ML Service")
 
@@ -73,3 +74,7 @@ def classify_query(request: ClassifyRequest):
 @app.post("/hybrid/route")
 def route(request: RouteRequest):
     return hybrid_route(request.query)
+
+@app.get("/memory")
+def memory():
+    return get_memory_context()
