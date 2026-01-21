@@ -33,51 +33,40 @@ def compute_confidence(sim_scores: dict) -> float:
     return float(np.max(probs))
 
 def hybrid_route(query: str):
-    # Classifier prediction
     clf_result = classify_text(query)
     clf_lobe = clf_result["predicted_lobe"]
     clf_conf = float(clf_result["confidence"])
 
-    update_memory(
-    query=query,
-    lobe=final_lobe,
-    action=action,
-    confidence=final_confidence
-)
-    
-    # Initialize defaults 
     final_lobe = clf_lobe
     final_confidence = clf_conf
 
-    # 3. Embedding similarity
     query_emb = embed_text(query)
-
     sim_scores = {
         lobe: cosine_similarity(query_emb, emb)
         for lobe, emb in LOBE_EMBEDDINGS.items()
     }
 
-    # Sort similarity scores
     sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
     best_sim_lobe, best_sim_score = sorted_lobes[0]
-    second_sim_score = sorted_lobes[1][1]
-    margin = best_sim_score - second_sim_score
 
-    # Final lobe decision
     if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
 
-    # Final confidence
     if clf_conf < 0.7:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
 
     final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
 
-    # Decide action
     action = decide_action(final_lobe, final_confidence)
 
-    # Return
+    update_memory(
+        query=query,
+        lobe=final_lobe,
+        action=action,
+        confidence=final_confidence
+    )
+
     return {
         "query": query,
         "selected_lobe": final_lobe,
