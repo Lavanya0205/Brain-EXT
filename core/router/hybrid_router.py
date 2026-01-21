@@ -3,7 +3,7 @@ from core.embeddings.text_embedder import embed_text
 from core.classifier.predictor import classify_text
 from core.config.lobes import LOBE_TEXT
 from core.router.action_router import decide_action
-from core.memory.memory_manager import update_memory
+from core.memory.manager_memory import update_memory
 
 # Precompute lobe embeddings
 LOBE_EMBEDDINGS = {
