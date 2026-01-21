@@ -19,3 +19,13 @@ def update_memory(query, lobe, action, confidence):
 
     print("SHORT TERM MEMORY:", short_memory.get())
     print("LONG TERM MEMORY:", long_memory.data)
+
+def get_memory_context():
+    """
+    Returns the current memory snapshot
+    Used by /memory endpoint
+    """
+    return {
+        "short_term_memory": short_memory.get(),
+        "long_term_memory": long_memory.data
+    }
