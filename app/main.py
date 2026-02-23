@@ -6,6 +6,9 @@ from core.router.router import route_query
 from core.classifier.predictor import classify_text
 from core.router.hybrid_router import hybrid_route
 from core.memory.manager_memory import get_memory_context
+from core.user.user_model import UserModel
+from core.user.user_model import user_model
+
 
 app = FastAPI(title="Super Memory ML Service")
 
@@ -78,3 +81,12 @@ def route(request: RouteRequest):
 @app.get("/memory")
 def memory():
     return get_memory_context()
+
+@app.get("/user/profile")
+def get_user_profile():
+    return user_model.summary()
+
+@app.post("/user/reset")
+def reset_user():
+    user_model.__init__()  # reinitialize
+    return {"message": "User profile reset"}
