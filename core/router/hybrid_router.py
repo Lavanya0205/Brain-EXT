@@ -58,13 +58,22 @@ def hybrid_route(query: str):
     #  Decide final lobe
     if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
-
+        #  Apply user bias (Adaptive Brain Layer)
+        user_bias_lobe = user_model.get_dominant_lobe()
+        # If classifier is uncertain, gently favor user's dominant lobe
+        if final_confidence < 0.6 and user_bias_lobe:
+            if user_bias_lobe in sim_scores:
+                final_lobe = user_bias_lobe
     #  Compute final confidence
     if clf_conf < 0.7:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
 
     final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
+    #  Apply user bias after confidence normalization
+    user_bias_lobe = user_model.get_dominant_lobe()
+    if final_confidence < 0.6 and user_bias_lobe:
+        final_lobe = user_bias_lobe
 
     #  Decide base action
     action = decide_action(final_lobe, final_confidence)
