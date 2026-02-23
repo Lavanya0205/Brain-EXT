@@ -35,7 +35,7 @@ def compute_confidence(sim_scores: dict) -> float:
     return float(np.max(probs))
 
 def hybrid_route(query: str):
-    # 1️⃣ Classifier prediction
+    # Classifier prediction
     clf_result = classify_text(query)
     clf_lobe = clf_result["predicted_lobe"]
     clf_conf = float(clf_result["confidence"])
@@ -44,7 +44,7 @@ def hybrid_route(query: str):
     final_lobe = clf_lobe
     final_confidence = clf_conf
 
-    # 2️⃣ Embedding similarity
+    # Embedding similarity
     query_emb = embed_text(query)
     sim_scores = {
         lobe: cosine_similarity(query_emb, emb)
@@ -55,31 +55,31 @@ def hybrid_route(query: str):
     sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
     best_sim_lobe, best_sim_score = sorted_lobes[0]
 
-    # 3️⃣ Decide final lobe
+    #  Decide final lobe
     if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
 
-    # 4️⃣ Compute final confidence
+    #  Compute final confidence
     if clf_conf < 0.7:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
 
     final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
 
-    # 5️⃣ Decide base action
+    #  Decide base action
     action = decide_action(final_lobe, final_confidence)
 
-    # 6️⃣ Adapt action using user history (Module 4 logic)
+    #  Adapt action using user history (Module 4 logic)
     action = adapt_action(action, final_confidence)
 
-    # 7️⃣ Update user model
+    # Update user model
     user_model.update(
         lobe=final_lobe,
         action=action,
         confidence=final_confidence
     )
 
-    # 8️⃣ Update memory (Module 3 logic)
+    # Update memory (Module 3 logic)
     update_memory(
         query=query,
         lobe=final_lobe,
@@ -87,7 +87,7 @@ def hybrid_route(query: str):
         confidence=final_confidence
     )
 
-    # 9️⃣ Return response
+    # Return response
     return {
         "query": query,
         "selected_lobe": final_lobe,
