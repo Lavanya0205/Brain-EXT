@@ -8,6 +8,8 @@ from core.router.hybrid_router import hybrid_route
 from core.memory.manager_memory import get_memory_context
 from core.user.user_model import UserModel
 from core.user.user_model import user_model
+from core.dream.background_worker import BackgroundTasks
+from core.dream.background_worker import process_upload
 
 
 app = FastAPI(title="Super Memory ML Service")
@@ -90,3 +92,8 @@ def get_user_profile():
 def reset_user():
     user_model.__init__()  # reinitialize
     return {"message": "User profile reset"}
+
+@app.post("/upload")
+def upload_file(file_text: str, background_tasks: BackgroundTasks):
+    background_tasks.add_task(process_upload, file_text)
+    return {"status": "Processing in background"}
