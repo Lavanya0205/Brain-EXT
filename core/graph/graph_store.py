@@ -1,5 +1,4 @@
 import networkx as nx
-
 class KnowledgeGraph:
     def __init__(self):
         self.graph = nx.Graph()
@@ -10,3 +9,5 @@ class KnowledgeGraph:
 
     def connect(self, c1, c2):
         self.graph.add_edge(c1, c2)
+
+knowledge_graph = KnowledgeGraph()

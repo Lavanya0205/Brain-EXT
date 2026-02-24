@@ -1,6 +1,6 @@
 from core.config.actions import BrainAction
 
-def decide_action(lobe: str, confidence: float) -> BrainAction:
+def decide_action(lobe: str, confidence: float, memory_context = None) -> BrainAction:
     if confidence < 0.45:
         return BrainAction.ASK_CLARIFICATION
 
