@@ -3,7 +3,7 @@ from core.embeddings.text_embedder import embed_text
 from core.classifier.predictor import classify_text
 from core.config.lobes import LOBE_TEXT
 from core.router.action_router import decide_action
-from core.memory.manager_memory import update_memory
+from core.memory.manager_memory import update_memory, get_memory_context
 from core.user.user_model import user_model
 from core.user.user_adapter import adapt_action
 
@@ -35,6 +35,7 @@ def compute_confidence(sim_scores: dict) -> float:
     return float(np.max(probs))
 
 def hybrid_route(query: str):
+
     # Classifier prediction
     clf_result = classify_text(query)
     clf_lobe = clf_result["predicted_lobe"]
@@ -44,7 +45,7 @@ def hybrid_route(query: str):
     final_lobe = clf_lobe
     final_confidence = clf_conf
 
-    # Embedding similarity
+    # Embedding similarity scoring
     query_emb = embed_text(query)
     sim_scores = {
         lobe: cosine_similarity(query_emb, emb)
@@ -55,30 +56,34 @@ def hybrid_route(query: str):
     sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
     best_sim_lobe, best_sim_score = sorted_lobes[0]
 
-    #  Decide final lobe
+    # Decide final lobe (Hybrid logic)
     if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
-        #  Apply user bias (Adaptive Brain Layer)
-        user_bias_lobe = user_model.get_dominant_lobe()
-        # If classifier is uncertain, gently favor user's dominant lobe
-        if final_confidence < 0.6 and user_bias_lobe:
-            if user_bias_lobe in sim_scores:
-                final_lobe = user_bias_lobe
-    #  Compute final confidence
+
+    # Compute final confidence
     if clf_conf < 0.7:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
 
     final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
-    #  Apply user bias after confidence normalization
+
+    # Apply user bias (clean single place)
     user_bias_lobe = user_model.get_dominant_lobe()
+
     if final_confidence < 0.6 and user_bias_lobe:
         final_lobe = user_bias_lobe
 
-    #  Decide base action
-    action = decide_action(final_lobe, final_confidence)
+    # Retrieve memory context (NEW – closes cognitive loop)
+    memory_context = get_memory_context(final_lobe)
 
-    #  Adapt action using user history (Module 4 logic)
+    # Decide base action (context-aware now)
+    action = decide_action(
+        final_lobe,
+        final_confidence,
+        memory_context
+    )
+
+    # Adapt action using user behavior
     action = adapt_action(action, final_confidence)
 
     # Update user model
@@ -88,7 +93,7 @@ def hybrid_route(query: str):
         confidence=final_confidence
     )
 
-    # Update memory (Module 3 logic)
+    # Update memory (store new interaction)
     update_memory(
         query=query,
         lobe=final_lobe,
@@ -96,7 +101,7 @@ def hybrid_route(query: str):
         confidence=final_confidence
     )
 
-    # Return response
+    # Return structured response
     return {
         "query": query,
         "selected_lobe": final_lobe,
@@ -105,5 +110,6 @@ def hybrid_route(query: str):
         "classifier_confidence": round(clf_conf, 3),
         "embedding_scores": {
             k: round(float(v), 3) for k, v in sim_scores.items()
-        }
+        },
+        "memory_used": memory_context["short_term_memory"][:2]  # preview
     }
