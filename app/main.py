@@ -10,6 +10,7 @@ from core.user.user_model import UserModel
 from core.user.user_model import user_model
 from core.dream.background_worker import BackgroundTasks
 from core.dream.background_worker import process_upload
+from core.graph.graph_store import knowledge_graph
 
 
 app = FastAPI(title="Super Memory ML Service")
@@ -84,6 +85,10 @@ def route(request: RouteRequest):
 def memory():
     return get_memory_context()
 
+@app.get("/memory/{lobe}")
+def check_lobe_memory(lobe: str):
+    return get_memory_context(lobe)
+
 @app.get("/user/profile")
 def get_user_profile():
     return user_model.summary()
@@ -97,3 +102,13 @@ def reset_user():
 def upload_file(file_text: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(process_upload, file_text)
     return {"status": "Processing in background"}
+
+@app.get("/graph")
+def get_graph():
+    print("Current nodes:", list(knowledge_graph.graph.nodes))
+    print("Current edges:", list(knowledge_graph.graph.edges))
+
+    return {
+        "nodes": list(knowledge_graph.graph.nodes),
+        "edges": list(knowledge_graph.graph.edges)
+    }
