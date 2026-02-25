@@ -6,6 +6,7 @@ from core.router.action_router import decide_action
 from core.memory.manager_memory import update_memory, get_memory_context
 from core.user.user_model import user_model
 from core.user.user_adapter import adapt_action
+from core.memory.manager_memory import update_memory, retrieve_similar
 
 # Precompute lobe embeddings
 LOBE_EMBEDDINGS = {
@@ -74,13 +75,14 @@ def hybrid_route(query: str):
         final_lobe = user_bias_lobe
 
     # Retrieve memory context (NEW – closes cognitive loop)
-    memory_context = get_memory_context(final_lobe)
+   # memory_context = get_memory_context(final_lobe)
+    memory_used = retrieve_similar(query, final_lobe, top_k=3)
 
     # Decide base action (context-aware now)
     action = decide_action(
         final_lobe,
         final_confidence,
-        memory_context
+        memory_used
     )
 
     # Adapt action using user behavior
@@ -111,5 +113,5 @@ def hybrid_route(query: str):
         "embedding_scores": {
             k: round(float(v), 3) for k, v in sim_scores.items()
         },
-        "memory_used": memory_context["short_term_memory"][:2]  # preview
+        "memory_used": memory_used[:2]  
     }
