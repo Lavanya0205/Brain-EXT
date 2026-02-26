@@ -7,6 +7,7 @@ from core.memory.manager_memory import update_memory, get_memory_context
 from core.user.user_model import user_model
 from core.user.user_adapter import adapt_action
 from core.memory.manager_memory import update_memory, retrieve_similar
+from core.memory.semantic_memory import search_memory
 
 # Precompute lobe embeddings
 LOBE_EMBEDDINGS = {
@@ -52,7 +53,6 @@ def hybrid_route(query: str):
         lobe: cosine_similarity(query_emb, emb)
         for lobe, emb in LOBE_EMBEDDINGS.items()
     }
-
     # Rank similarities
     sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
     best_sim_lobe, best_sim_score = sorted_lobes[0]
@@ -64,46 +64,37 @@ def hybrid_route(query: str):
     # Compute final confidence
     if clf_conf < 0.7:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
-
     final_confidence = min(max(final_confidence, 0.35), 0.95)
     final_confidence = normalize_confidence(final_confidence)
 
-    # Apply user bias (clean single place)
     user_bias_lobe = user_model.get_dominant_lobe()
 
     if final_confidence < 0.6 and user_bias_lobe:
         final_lobe = user_bias_lobe
 
-    # Retrieve memory context (NEW – closes cognitive loop)
-   # memory_context = get_memory_context(final_lobe)
-    memory_used = retrieve_similar(query, final_lobe, top_k=3)
-
-    # Decide base action (context-aware now)
+    memory_used = search_memory(query, final_lobe, top_k=3)
+    best_similarity = 0
+    if memory_used:
+     best_similarity = memory_used[0]["score"]
+    final_confidence += best_similarity * 0.05
+    final_confidence = min(final_confidence, 0.98)
     action = decide_action(
         final_lobe,
         final_confidence,
         memory_used
     )
-
-    # Adapt action using user behavior
     action = adapt_action(action, final_confidence)
-
-    # Update user model
     user_model.update(
         lobe=final_lobe,
         action=action,
         confidence=final_confidence
     )
-
-    # Update memory (store new interaction)
     update_memory(
         query=query,
         lobe=final_lobe,
         action=action,
         confidence=final_confidence
     )
-
-    # Return structured response
     return {
         "query": query,
         "selected_lobe": final_lobe,
