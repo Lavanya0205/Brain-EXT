@@ -4,6 +4,7 @@ from core.memory.long_term import LongTermMemory
 from core.graph.entity_extractor import extract_entities
 from core.graph.graph_store import knowledge_graph
 from core.embeddings.text_embedder import embed_text
+from core.memory.semantic_memory import add_memory
 
 short_memory = {
     "frontal": ShortTermMemory(),
@@ -26,34 +27,29 @@ def cosine_similarity(a, b):
 
 def update_memory(query, lobe, action, confidence):
 
-    # Generate embedding once
     embedding = embed_text(query)
 
-    # Store in short-term memory
     short_memory[lobe].add({
         "query": query,
-        "embedding": embedding, 
+        "embedding": embedding,
         "lobe": lobe,
         "action": action,
         "confidence": confidence
     })
+    add_memory(query, lobe, action, confidence)
 
-    # Update long-term memory
     long_memory[lobe].update_lobe(lobe)
 
     if confidence < 0.5:
         long_memory[lobe].increment_confusion()
 
-    # Knowledge Graph Update
     entities = extract_entities(query)
 
     if entities:
         knowledge_graph.add_concepts(entities)
-
         for i in range(len(entities)):
             for j in range(i + 1, len(entities)):
                 knowledge_graph.connect(entities[i], entities[j])
-
 
 def retrieve_similar(query, lobe, top_k=3):
 
