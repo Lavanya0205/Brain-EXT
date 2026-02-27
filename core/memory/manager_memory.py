@@ -5,6 +5,7 @@ from core.graph.entity_extractor import extract_entities
 from core.graph.graph_store import knowledge_graph
 from core.embeddings.text_embedder import embed_text
 from core.memory.semantic_memory import add_memory
+from core.database.mongo import vector_collection
 
 short_memory = {
     "frontal": ShortTermMemory(),
@@ -28,6 +29,14 @@ def cosine_similarity(a, b):
 def update_memory(query, lobe, action, confidence):
 
     embedding = embed_text(query)
+    vector_collection.insert_one({
+    "user_id": "demo_user", 
+    "lobe": lobe,
+    "text": query,
+    "embedding": embedding,
+    "action": action,
+    "confidence": confidence
+})
 
     short_memory[lobe].add({
         "query": query,
