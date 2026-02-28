@@ -61,26 +61,18 @@ def update_memory(query, lobe, action, confidence):
                 knowledge_graph.connect(entities[i], entities[j])
 
 def retrieve_similar(query, lobe, top_k=3, threshold=0.6):
-
     query_embedding = embed_text(query)
-
     memories = short_memory[lobe].get()
 
     scored = []
 
     for item in memories:
-
         if "embedding" in item:
-
             similarity = cosine_similarity(query_embedding, item["embedding"])
-            
             if similarity >= threshold:
                 scored.append((similarity, item))
-
     scored.sort(reverse=True, key=lambda x: x[0])
-
     return [item for _, item in scored[:top_k]]
-
 
 def get_memory_context(lobe=None):
     if lobe:
@@ -88,7 +80,6 @@ def get_memory_context(lobe=None):
             "short_term_memory": short_memory[lobe].get(),
             "long_term_memory": long_memory[lobe].data
         }
-
     return {
         lobe_name: {
             "short_term_memory": short_memory[lobe_name].get(),
