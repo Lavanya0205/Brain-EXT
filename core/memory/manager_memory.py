@@ -4,7 +4,6 @@ from core.memory.long_term import LongTermMemory
 from core.graph.entity_extractor import extract_entities
 from core.graph.graph_store import knowledge_graph
 from core.embeddings.text_embedder import embed_text
-from core.memory.semantic_memory import add_memory
 from core.database.mongo import vector_collection
 
 short_memory = {
@@ -47,9 +46,6 @@ def update_memory(query, response, lobe, action, confidence):
         "action": action,
         "confidence": confidence
     })
-
-    add_memory(query)
-
     long_memory[lobe].update_lobe(lobe)
 
     if confidence < 0.5:
