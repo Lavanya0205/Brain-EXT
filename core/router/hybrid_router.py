@@ -16,14 +16,12 @@ LOBE_EMBEDDINGS = {
 }
 # Utility Functions
 def normalize_confidence(conf: float) -> float:
-    """
-    Maps raw confidence to human-readable scale (0-1)
-    """
     if conf <= 0.3:
         return 0.3
     if conf >= 0.85:
         return 0.95
     return round((conf - 0.3) / (0.85 - 0.3), 3)
+
 
 def cosine_similarity(a, b):
     a = np.array(a)
@@ -32,6 +30,7 @@ def cosine_similarity(a, b):
 
 # MAIN HYBRID ROUTER
 def hybrid_route(query: str):
+
     # Classifier Prediction
     clf_result = classify_text(query)
     clf_lobe = clf_result["predicted_lobe"]
@@ -51,7 +50,7 @@ def hybrid_route(query: str):
     sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
     best_sim_lobe, best_sim_score = sorted_lobes[0]
 
-    # Hybrid Decision Logic
+    # Hybrid Lobe Decision
     if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
 
@@ -69,7 +68,8 @@ def hybrid_route(query: str):
         final_lobe = user_bias_lobe
 
     # Retrieve Semantic Memory (RAG)
-    memory_used = search_memory(query,final_lobe,top_k=3)
+    memory_used = search_memory(query, final_lobe, top_k=3)
+
     best_similarity = 0
     if memory_used:
         best_similarity = memory_used[0]["score"]
@@ -83,21 +83,24 @@ def hybrid_route(query: str):
         final_confidence,
         memory_used
     )
+
     action = adapt_action(action, final_confidence)
+
     # Update User Model
     user_model.update(
         lobe=final_lobe,
         action=action,
         confidence=final_confidence
     )
-   # LLM 
-context_text = ""
-if memory_used:
-    context_text = "\nRelevant past memories:\n"
-    for m in memory_used:
-        context_text += f"- {m['text']} (similarity: {round(m['score'], 3)})\n"
+    # LLM CONTEXT BUILDING (RAG + Brain State)
+    context_text = ""
 
-prompt = f"""
+    if memory_used:
+        context_text = "\nRelevant past memories:\n"
+        for m in memory_used:
+            context_text += f"- {m['text']} (similarity: {round(m['score'], 3)})\n"
+
+    prompt = f"""
 You are an advanced cognitive AI system.
 
 User Question:
@@ -114,13 +117,27 @@ Confidence Level:
 Answer clearly, intelligently, and in a structured way.
 """
 
-llm_response = generate_response(prompt)
+    # Generate LLM response FIRST
+    llm_response = generate_response(prompt)
 
-# Store Memory AFTER generating response
-update_memory(
-    query=query,
-    response=llm_response,
-    lobe=final_lobe,
-    action=action,
-    confidence=final_confidence
-)
+    # Store Query + Response in Memory & DB
+    update_memory(
+        query=query,
+        response=llm_response,
+        lobe=final_lobe,
+        action=action,
+        confidence=final_confidence
+    )
+    # Final Response
+    return {
+        "query": query,
+        "selected_lobe": final_lobe,
+        "confidence": round(final_confidence, 3),
+        "action": action,
+        "classifier_confidence": round(clf_conf, 3),
+        "embedding_scores": {
+            k: round(float(v), 3) for k, v in sim_scores.items()
+        },
+        "memory_used": memory_used[:2],
+        "response": llm_response
+    }
