@@ -8,6 +8,9 @@ class KnowledgeGraph:
             self.graph.add_node(concept)
 
     def connect(self, c1, c2):
-        self.graph.add_edge(c1, c2)
+        if self.graph.has_edge(c1, c2):
+          self.graph[c1][c2]["weight"] += 1
+        else:
+         self.graph.add_edge(c1, c2, weight=1)
 
 knowledge_graph = KnowledgeGraph()
