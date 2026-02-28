@@ -14,6 +14,7 @@ LOBE_EMBEDDINGS = {
     lobe: embed_text(text)
     for lobe, text in LOBE_TEXT.items()
 }
+
 # Utility Functions
 def normalize_confidence(conf: float) -> float:
     if conf <= 0.3:
@@ -21,7 +22,6 @@ def normalize_confidence(conf: float) -> float:
     if conf >= 0.85:
         return 0.95
     return round((conf - 0.3) / (0.85 - 0.3), 3)
-
 
 def cosine_similarity(a, b):
     a = np.array(a)
@@ -63,18 +63,19 @@ def hybrid_route(query: str):
 
     # User Bias Influence
     user_bias_lobe = user_model.get_dominant_lobe()
-
     if final_confidence < 0.6 and user_bias_lobe:
         final_lobe = user_bias_lobe
 
-    # Retrieve Semantic Memory (RAG)
+    # Retrieve Semantic Memory (Advanced RAG)
     memory_used = search_memory(query, final_lobe, top_k=3)
 
-    best_similarity = 0
-    if memory_used:
-        best_similarity = memory_used[0]["score"]
+    memory_boost = 0
 
-    final_confidence += best_similarity * 0.05
+    if memory_used:
+        avg_similarity = sum(m["score"] for m in memory_used) / len(memory_used)
+        memory_boost = avg_similarity * 0.08
+
+    final_confidence += memory_boost
     final_confidence = min(final_confidence, 0.98)
 
     # Decide Action
@@ -92,13 +93,13 @@ def hybrid_route(query: str):
         action=action,
         confidence=final_confidence
     )
-    # LLM CONTEXT BUILDING (RAG + Brain State)
+    # Build LLM Context (RAG + Brain State)
     context_text = ""
 
     if memory_used:
         context_text = "\nRelevant past memories:\n"
         for m in memory_used:
-            context_text += f"- {m['text']} (similarity: {round(m['score'], 3)})\n"
+            context_text += f"- {m['text']}\n"
 
     prompt = f"""
 You are an advanced cognitive AI system.
@@ -117,10 +118,10 @@ Confidence Level:
 Answer clearly, intelligently, and in a structured way.
 """
 
-    # Generate LLM response FIRST
+    # Generate LLM Response
     llm_response = generate_response(prompt)
 
-    # Store Query + Response in Memory & DB
+    # Store Query + Response
     update_memory(
         query=query,
         response=llm_response,
@@ -128,7 +129,7 @@ Answer clearly, intelligently, and in a structured way.
         action=action,
         confidence=final_confidence
     )
-    # Final Response
+    # Return Final Response
     return {
         "query": query,
         "selected_lobe": final_lobe,

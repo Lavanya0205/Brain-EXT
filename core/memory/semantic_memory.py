@@ -31,7 +31,7 @@ def cosine_similarity(vec1, vec2):
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
 
-def search_memory(query: str, lobe: str, top_k: int = 5, threshold: float = 0.55):
+def search_memory(query: str, lobe: str, top_k: int = 3):
 
     if not MEMORY_BANK:
         return []
@@ -41,27 +41,19 @@ def search_memory(query: str, lobe: str, top_k: int = 5, threshold: float = 0.55
 
     for memory in MEMORY_BANK:
 
-        # Only compare same lobe memories
+        # SAFETY CHECK
+        if not isinstance(memory, dict):
+            continue
+
         if memory.get("lobe") != lobe:
             continue
 
-        score = cosine_similarity(
-            query_embedding,
-            memory["embedding"]
-        )
+        score = cosine_similarity(query_embedding, memory["embedding"])
 
-        # Dynamic threshold
-        if score >= threshold:
-            weighted_score = score * (0.7 + memory.get("confidence", 0.5) * 0.3)
+        results.append({
+            "text": memory["text"],
+            "score": score
+        })
 
-            results.append({
-                "text": memory["text"],
-                "score": round(weighted_score, 4),
-                "raw_score": round(score, 4),
-                "confidence": memory.get("confidence", 0.5)
-            })
-
-    # Sort by weighted score
     results.sort(key=lambda x: x["score"], reverse=True)
-
     return results[:top_k]
