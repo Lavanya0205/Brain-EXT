@@ -26,17 +26,19 @@ def cosine_similarity(a, b):
     b = np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-def update_memory(query, lobe, action, confidence):
+def update_memory(query, response, lobe, action, confidence):
 
     embedding = embed_text(query)
+
     vector_collection.insert_one({
-    "user_id": "demo_user", 
-    "lobe": lobe,
-    "text": query,
-    "embedding": embedding,
-    "action": action,
-    "confidence": confidence
-})
+        "user_id": "demo_user",
+        "lobe": lobe,
+        "query": query,
+        "response": response,
+        "embedding": embedding,
+        "action": action,
+        "confidence": confidence
+    })
 
     short_memory[lobe].add({
         "query": query,
@@ -45,7 +47,8 @@ def update_memory(query, lobe, action, confidence):
         "action": action,
         "confidence": confidence
     })
-    add_memory(query, lobe, action, confidence)
+
+    add_memory(query)
 
     long_memory[lobe].update_lobe(lobe)
 

@@ -90,22 +90,14 @@ def hybrid_route(query: str):
         action=action,
         confidence=final_confidence
     )
-    # Store Memory + Graph Update
-    update_memory(
-        query=query,
-        lobe=final_lobe,
-        action=action,
-        confidence=final_confidence
-    )
-    # LLM 
-    context_text = ""
+   # LLM 
+context_text = ""
+if memory_used:
+    context_text = "\nRelevant past memories:\n"
+    for m in memory_used:
+        context_text += f"- {m['text']} (similarity: {round(m['score'], 3)})\n"
 
-    if memory_used:
-        context_text = "\nRelevant past memories:\n"
-        for m in memory_used:
-            context_text += f"- {m['text']} (similarity: {round(m['score'], 3)})\n"
-
-    prompt = f"""
+prompt = f"""
 You are an advanced cognitive AI system.
 
 User Question:
@@ -122,18 +114,13 @@ Confidence Level:
 Answer clearly, intelligently, and in a structured way.
 """
 
-    llm_response = generate_response(prompt)
+llm_response = generate_response(prompt)
 
-
-    return {
-        "query": query,
-        "selected_lobe": final_lobe,
-        "confidence": round(final_confidence, 3),
-        "action": action,
-        "classifier_confidence": round(clf_conf, 3),
-        "embedding_scores": {
-            k: round(float(v), 3) for k, v in sim_scores.items()
-        },
-        "memory_used": memory_used[:2],
-        "response": llm_response
-    }
+# Store Memory AFTER generating response
+update_memory(
+    query=query,
+    response=llm_response,
+    lobe=final_lobe,
+    action=action,
+    confidence=final_confidence
+)
