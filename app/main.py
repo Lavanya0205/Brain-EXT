@@ -13,6 +13,10 @@ from core.dream.background_worker import process_upload
 from core.graph.graph_store import knowledge_graph
 from core.translation.translator import translate_text
 from pydantic import BaseModel
+from fastapi import UploadFile, File
+from core.ocr.ocr_engine import extract_text_from_image
+import shutil
+import os
 
 app = FastAPI(title="Super Memory ML Service")
 
@@ -123,3 +127,16 @@ def translate(request: TranslationRequest):
         text=request.text,
         target_language=request.target_language
     )
+@app.post("/ocr")
+async def ocr_image(file: UploadFile = File(...)):
+
+    file_path = f"temp_{file.filename}"
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    result = extract_text_from_image(file_path)
+
+    os.remove(file_path)
+
+    return result
