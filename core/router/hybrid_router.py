@@ -9,13 +9,14 @@ from core.user.user_model import user_model
 from core.user.user_adapter import adapt_action
 from core.LLM.brain_llm import generate_response
 
+
 # Precompute Lobe Embeddings
 LOBE_EMBEDDINGS = {
     lobe: embed_text(text)
     for lobe, text in LOBE_TEXT.items()
 }
 
-# Utility Functions
+
 def normalize_confidence(conf: float) -> float:
     if conf <= 0.3:
         return 0.3
@@ -23,15 +24,15 @@ def normalize_confidence(conf: float) -> float:
         return 0.95
     return round((conf - 0.3) / (0.85 - 0.3), 3)
 
+
 def cosine_similarity(a, b):
     a = np.array(a)
     b = np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-# MAIN HYBRID ROUTER
-def hybrid_route(query: str):
 
-    # Classifier Prediction
+def hybrid_route(query: str):
+    # CLASSIFIER PREDICTION
     clf_result = classify_text(query)
     clf_lobe = clf_result["predicted_lobe"]
     clf_conf = float(clf_result["confidence"])
@@ -39,46 +40,44 @@ def hybrid_route(query: str):
     final_lobe = clf_lobe
     final_confidence = clf_conf
 
-    # Embedding Similarity Scoring
+    # EMBEDDING SIMILARITY
     query_emb = embed_text(query)
 
     sim_scores = {
-        lobe: cosine_similarity(query_emb, emb)
-        for lobe, emb in LOBE_EMBEDDINGS.items()
+        lobe: float(np.dot(query_emb, embed_text(text)) /
+        (np.linalg.norm(query_emb) * np.linalg.norm(embed_text(text))))
+        for lobe, text in LOBE_TEXT.items()
     }
 
     sorted_lobes = sorted(sim_scores.items(), key=lambda x: x[1], reverse=True)
     best_sim_lobe, best_sim_score = sorted_lobes[0]
 
-    # Hybrid Lobe Decision
+    # Hybrid decision
     if clf_conf < 0.6 and best_sim_score > sim_scores[clf_lobe] + 0.15:
         final_lobe = best_sim_lobe
 
-    # Confidence Blending
+    # Confidence blending
     if clf_conf < 0.7:
         final_confidence = (clf_conf * 0.7) + (sim_scores[final_lobe] * 0.3)
 
     final_confidence = min(max(final_confidence, 0.35), 0.95)
-    final_confidence = normalize_confidence(final_confidence)
 
-    # User Bias Influence
+    # USER BIAS ADJUSTMENT
     user_bias_lobe = user_model.get_dominant_lobe()
     if final_confidence < 0.6 and user_bias_lobe:
         final_lobe = user_bias_lobe
 
-    # Retrieve Semantic Memory (Advanced RAG)
+    # RAG MEMORY SEARCH
     memory_used = search_memory(query, final_lobe, top_k=3)
 
-    memory_boost = 0
-
+    best_similarity = 0
     if memory_used:
-        avg_similarity = sum(m["score"] for m in memory_used) / len(memory_used)
-        memory_boost = avg_similarity * 0.08
+        best_similarity = memory_used[0].get("score", 0)
 
-    final_confidence += memory_boost
+    final_confidence += best_similarity * 0.05
     final_confidence = min(final_confidence, 0.98)
 
-    # Decide Action
+    # ACTION DECISION
     action = decide_action(
         final_lobe,
         final_confidence,
@@ -87,41 +86,77 @@ def hybrid_route(query: str):
 
     action = adapt_action(action, final_confidence)
 
-    # Update User Model
     user_model.update(
         lobe=final_lobe,
         action=action,
         confidence=final_confidence
     )
-    # Build LLM Context (RAG + Brain State)
-    context_text = ""
+    # DYNAMIC DEPTH MODE
+    if final_confidence > 0.85:
+        depth_instruction = "Provide a detailed and advanced explanation."
+    elif final_confidence < 0.6:
+        depth_instruction = "Keep explanation moderate and cautious."
+    else:
+        depth_instruction = "Provide a clear and structured explanation."
 
+    # MEMORY CONTEXT FORMAT
+    context_text = ""
     if memory_used:
         context_text = "\nRelevant past memories:\n"
         for m in memory_used:
-            context_text += f"- {m['text']}\n"
+            context_text += f"- {m.get('text', '')} (similarity: {round(m.get('score', 0), 3)})\n"
 
+    # PRIMARY LLM PROMPT
     prompt = f"""
-You are an advanced cognitive AI system.
+You are an advanced cognitive AI system with modular brain lobes.
 
-User Question:
+BRAIN STATE:
+- Active Lobe: {final_lobe}
+- Confidence Level: {round(final_confidence, 3)}
+
+USER QUESTION:
 {query}
 
-Selected Brain Lobe:
-{final_lobe}
+RELEVANT MEMORY CONTEXT:
+{context_text if context_text else "No strong prior memories found."}
 
-Confidence Level:
-{round(final_confidence, 3)}
+DEPTH MODE:
+{depth_instruction}
 
-{context_text}
+TASK:
+1. Internally analyze the question step-by-step.
+2. Evaluate memory relevance.
+3. Avoid hallucinations.
+4. Do NOT expose internal reasoning.
 
-Answer clearly, intelligently, and in a structured way.
+Provide a clean, structured, intelligent explanation.
 """
 
-    # Generate LLM Response
     llm_response = generate_response(prompt)
 
-    # Store Query + Response
+    # SELF-REFLECTION LAYER
+    reflection_prompt = f"""
+You are reviewing the following AI response.
+
+Original Question:
+{query}
+
+AI Response:
+{llm_response}
+
+Check:
+- Logical correctness
+- Structure clarity
+- Hallucination risk
+- Improvement potential
+
+Rewrite a polished improved version.
+Return only the final improved answer.
+"""
+
+    llm_response = generate_response(reflection_prompt)
+
+    # STORE MEMORY (FINAL)
     update_memory(
         query=query,
         response=llm_response,
@@ -129,7 +164,7 @@ Answer clearly, intelligently, and in a structured way.
         action=action,
         confidence=final_confidence
     )
-    # Return Final Response
+    # RETURN RESPONSE
     return {
         "query": query,
         "selected_lobe": final_lobe,
