@@ -11,7 +11,8 @@ from core.user.user_model import user_model
 from core.dream.background_worker import BackgroundTasks
 from core.dream.background_worker import process_upload
 from core.graph.graph_store import knowledge_graph
-
+from core.translation.translator import translate_text
+from pydantic import BaseModel
 
 app = FastAPI(title="Super Memory ML Service")
 
@@ -38,6 +39,10 @@ class ClassifyRequest(BaseModel):
 
 class HybridRouteRequest(BaseModel):
     query: str
+
+class TranslationRequest(BaseModel):
+    text: str
+    target_language: str
 
 
 
@@ -112,3 +117,9 @@ def get_graph():
         "nodes": list(knowledge_graph.graph.nodes),
         "edges": list(knowledge_graph.graph.edges)
     }
+@app.post("/translate")
+def translate(request: TranslationRequest):
+    return translate_text(
+        text=request.text,
+        target_language=request.target_language
+    )
