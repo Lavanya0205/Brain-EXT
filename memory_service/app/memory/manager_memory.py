@@ -1,5 +1,5 @@
 import numpy as np
-from embeddings.text_embedder import embed_text
+from app.embeddings.text_embedder import embed_text
 
 memory_store = []  # simple in-memory store
 
