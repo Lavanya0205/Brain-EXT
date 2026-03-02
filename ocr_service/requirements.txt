@@ -1,8 +1,12 @@
 --extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cpu/
 
-fastapi==0.135.0
-uvicorn==0.41.0
+fastapi==0.110.0
+uvicorn==0.29.0
+
+numpy==1.24.4
+opencv-python-headless==4.6.0.66
+
 paddleocr==2.7.0.3
 paddlepaddle==2.6.1
-opencv-python==4.6.0.66
-python-multipart==0.0.22
+
+python-multipart==0.0.9
