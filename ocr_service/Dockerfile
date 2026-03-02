@@ -21,8 +21,8 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN pip install --upgrade pip
+RUN pip install numpy==1.26.4
 RUN pip install --no-cache-dir -r requirements.txt
-
 # Copy OCR service files
 COPY . .
 
