@@ -1,4 +1,4 @@
-from core.LLM.brain_llm import generate_response
+from app.llm.brain_llm import generate_response
 
 
 SUPPORTED_LANGUAGES = {
