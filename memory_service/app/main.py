@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from app.memory.manager_memory import add_memory, search_memory, get_memory_context
-from app.memory.semantic_memory import add_memory, search_memory
+from app.memory.manager_memory import add_memory, get_memory_context
+from app.memory.semantic_memory import add_memory,search_memory
 from app.embeddings.text_embedder import embed_text
 
 app = FastAPI(title="Memory Service")
